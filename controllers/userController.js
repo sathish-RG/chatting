@@ -1,5 +1,17 @@
 import asyncHandler from "express-async-handler"
 import User from "../models/userModel.js"
+import fs from "fs"
+import path from "path"
+
+export const getUserProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select("-password")
+  if (user) {
+    res.json(user)
+  } else {
+    res.status(404)
+    throw new Error("User not found")
+  }
+})
 
 export const updateProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id)
@@ -13,6 +25,13 @@ export const updateProfile = asyncHandler(async (req, res) => {
       user.password = req.body.password
     }
     if (req.file) {
+      // Remove old profile photo if it exists
+      if (user.profilePhoto) {
+        const oldPhotoPath = path.join(process.cwd(), user.profilePhoto)
+        if (fs.existsSync(oldPhotoPath)) {
+          fs.unlinkSync(oldPhotoPath)
+        }
+      }
       user.profilePhoto = `/uploads/${req.file.filename}`
     }
 
@@ -25,7 +44,6 @@ export const updateProfile = asyncHandler(async (req, res) => {
       username: updatedUser.username,
       profilePhoto: updatedUser.profilePhoto,
       bio: updatedUser.bio,
-      token: req.user.token,
     })
   } else {
     res.status(404)
